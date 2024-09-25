@@ -1,0 +1,149 @@
+#Knowing the working directory in Rstudio and storing my data there
+getwd()
+#Reading the Dataset
+obesity <-read.csv("ObesityData.csv", TRUE, ",")
+class(obesity)
+head(obesity)
+#Changing column name Family_history_with_overweight to FH)
+# Changing the column name
+names(obesity)[names(obesity) == "family_history_with_overweight"] <- "FHO"
+names(obesity)
+#Checking for missing values in the dataset
+any(is.na(obesity))
+#Summary of Missing values
+summary(obesity)
+#Looking for the datatypes of the columns
+str(obesity)
+#Exoloratory Data Visualization
+#Installing and Loading ggplot2
+install.packages("ggplot2")
+library(ggplot2)
+
+# Count how many "Insufficient Weight" entries exist
+insufficient_weight_count <- sum(obesity$NObeyesdad == "Insufficient Weight", na.rm = TRUE)
+print(insufficient_weight_count)
+
+#Changing NA to Insufficient Weight
+obesity$NObeyesdad[is.na(obesity$NObeyesdad)] <- "Insufficient Weight"# Check the unique values in the NObeyesdad column
+unique_values <- unique(obesity$NObeyesdad)
+print(unique_values)
+
+# Converting NObeyesdad to a factor with specified levels
+obesity$NObeyesdad <- factor(obesity$NObeyesdad, 
+                             levels = c("Insufficient_Weight", 
+                                        "Normal_Weight", 
+                                        "Overweight_Level_I", 
+                                        "Overweight_Level_II", 
+                                        "Obesity_Type_I", 
+                                        "Obesity_Type_II", 
+                                        "Obesity_Type_III"))
+
+# Create the box plot
+ggplot(obesity, aes(x = NObeyesdad, y = Weight)) +
+  geom_boxplot(fill = "lightblue", color = "blue") +
+  labs(title = "Box Plot of Weight by Obesity Classification", 
+       x = "Obesity Classification", 
+       y = "Weight") +
+  theme_minimal()
+
+#Gender and obesity relationship
+# Load necessary library
+library(ggplot2)
+
+# Create a bar plot for Gender and NObeyesdad
+ggplot(obesity, aes(x = NObeyesdad, fill = Gender)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Bar Plot of Obesity Classification by Gender", 
+       x = "Obesity Classification", 
+       y = "Count") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1") # Optional: Use a color palette for gender
+
+#Calculating Body Mass Index and creating a new column
+obesity$BMI <- obesity$Weight / (obesity$Height^2)
+
+# Move the BMI column to be after the Weight column
+obesity <- obesity[, c("Gender", "Age", "Height", "Weight", "BMI", 
+                       "FHO", "FAVC", "FCVC", "NCP", "CAEC", 
+                       "SMOKE", "CH2O", "SCC", "FAF", "TUE", 
+                       "CALC", "MTRANS", "NObeyesdad")]
+
+# View the updated dataframe with BMI
+head(obesity)
+
+# Visualization for Family History of Overweight Against NObeyesdad
+# Load ggplot2 if you haven't already
+library(ggplot2)
+
+# Bar Plot for Family history of Obesity against NObeyesdad
+ggplot(obesity, aes(x = NObeyesdad, fill = FHO)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Obesity Classification by Family History of Overweight (FHO)",
+       x = "Obesity Classification",
+       y = "Count",
+       fill = "Family History of Overweight (FHO)") +
+  theme_minimal()
+
+#Visualization for Fast Food Consumprion Against Obesity
+ggplot(obesity, aes(x = NObeyesdad, fill = FAVC)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Obesity Classification by Fast Food Consumption (FAVC)",
+       x = "Obesity Classification",
+       y = "Count",
+       fill = "Fast Food Consumption") +
+  theme_minimal()
+
+#Visualization for Vegetable Consumption (FCVC) against the obesity classification
+ggplot(obesity, aes(x = NObeyesdad, fill = FHO)) +
+  geom_bar(position = "fill") +  # Position = "fill" makes it a percentage stacked bar plot
+  labs(title = "Obesity Classification by Vegetable Consumption (FHO)",
+       x = "Obesity Classification",
+       y = "Proportion",
+       fill = "Family History of Overweight (FHO)") +
+  scale_y_continuous(labels = scales::percent) +  # Convert y-axis to percentages
+  theme_minimal()
+#Training a Testing to predict obesity type based on control variables
+#Intalling and loading the needed libralies
+install.packages("caret")
+install.packages("rpart")
+install.packages("e1071")
+library(caret)
+library(rpart)  # For decision tree model
+library(e1071)  # For tuning parameters
+#Preprocessing the data
+# Convert NObeyesdad to factor
+obesity$NObeyesdad <- as.factor(obesity$NObeyesdad)
+
+# Convert other categorical variables to factors if not already done
+obesity$Gender <- as.factor(obesity$Gender)
+obesity$FHO <- as.factor(obesity$FHO)
+obesity$FAVC <- as.factor(obesity$FAVC)
+obesity$CAEC <- as.factor(obesity$CAEC)
+obesity$SMOKE <- as.factor(obesity$SMOKE)
+obesity$SCC <- as.factor(obesity$SCC)
+obesity$CALC <- as.factor(obesity$CALC)
+obesity$MTRANS <- as.factor(obesity$MTRANS)
+
+#Spliting the data into training and testing sets
+set.seed(123)  # For reproducibility
+trainIndex <- createDataPartition(obesity$NObeyesdad, p = 0.8, 
+                                  list = FALSE, 
+                                  times = 1)
+obesityTrain <- obesity[trainIndex, ]
+obesityTest  <- obesity[-trainIndex, ]
+
+
+# Train a decision tree model
+model <- train(NObeyesdad ~ ., data = obesityTrain, method = "rpart",
+               trControl = trainControl(method = "cv", number = 10),
+               tuneLength = 10)
+
+#Evaluating the model
+# Make predictions on the test set
+predictions <- predict(model, newdata = obesityTest)
+
+# Confusion Matrix to see the performance
+confusionMatrix(predictions, obesityTest$NObeyesdad)
+
+
+
